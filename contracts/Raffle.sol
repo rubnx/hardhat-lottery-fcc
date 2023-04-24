@@ -32,7 +32,7 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
     enum RaffleState {
         OPEN,
         CALCULATING
-    }
+    } // uint256 0 = OPEN, 1 = CALCULATING
 
     /* STATE VARIABLES */
     uint256 private immutable i_entranceFee; // we only use the entranceFee variable 1 time so we make it immutable to save gas
@@ -197,5 +197,9 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     function getRequestConfirmations() public pure returns (uint256) {
         return REQUEST_CONFIRMATIONS;
+    }
+
+    function getInterval() public view returns (uint256) {
+        return i_interval;
     }
 }

@@ -24,6 +24,8 @@ const networkConfig = {
         entranceFee: ethers.utils.parseEther("0.01"),
         // We just copy any gasLane Key Hash because we are going to mock it anyway
         gasLane: "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c",
+        callbackGasLimit: "500000", // 500,000
+        interval: "30", // 30 seconds
     },
 }
 
