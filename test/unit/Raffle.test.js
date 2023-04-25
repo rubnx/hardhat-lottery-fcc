@@ -2,6 +2,8 @@ const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
 const { developmentChains, networkConfig } = require("../../helper-hardhat-config")
 const { assert, expect } = require("chai")
 
+// Only run all tests if we ARE on development/local chain (only run if we are NOT on testnet or mainnet)
+developmentChains.includes(network.name)
 !developmentChains.includes(network.name)
     ? describe.skip
     : // describe blocks are not async because they can't work with promises

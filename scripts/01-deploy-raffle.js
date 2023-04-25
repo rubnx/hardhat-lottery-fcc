@@ -14,9 +14,10 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         const vrfCoordinatorV2Mock = await ethers.getContract("VRFCoordinatorV2Mock")
         vrfCoordinatorV2Address = vrfCoordinatorV2Mock.address
         // Now we create a mock subscription and get the mock subscription ID
-        const transactionResponse = await vrfCoordinatorV2Mock.createSuscription()
+        const transactionResponse = await vrfCoordinatorV2Mock.createSubscription()
         const transactionReceipt = await transactionResponse.wait(1)
-        subscriptionId = transactionReceipt.events[0].args.subscriptionId
+        console.log(transactionReceipt.events[0].args)
+        subscriptionId = transactionReceipt.events[0].args.subId
         // Fund the subscription
         // Usually, you'd need the link token on a real network, but this is a mock
         await vrfCoordinatorV2Mock.fundSubscription(subscriptionId, VRF_SUB_FUND_AMOUNT)
