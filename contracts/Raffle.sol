@@ -141,7 +141,8 @@ contract Raffle is VRFConsumerBaseV2, AutomationCompatibleInterface {
 
     // The fulfillRandomWords function is required by Chainlink VRF and handles
     // the logic of what to do with the random values after we get them
-    // We need to override the original function
+    // We need to override the original function existing in VRFCoordinatorV2 and VRFCoordinatorV2Mock
+    // in the VRFCoordinatorV2 contract fulfillRandomWords() calls fulfillRandomWordsWithOverride()
     function fulfillRandomWords(
         uint256 /* requestId */,
         uint256[] memory randomWords

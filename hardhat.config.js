@@ -51,4 +51,8 @@ module.exports = {
         // coinmarketcap: COINMARKETCAP_API_KEY,
         // token: "MATIC",
     },
+    // Adding a timeout for tests in case they get stuck in a unfulfilled promise or a loop
+    mocha: {
+        timeout: 300000, // 300 seconds max
+    },
 }
