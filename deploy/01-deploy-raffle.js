@@ -44,6 +44,8 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         log: true,
         blockConfirmations: network.config.blockConfirmations || 1,
     })
+    // We also need to add a consumer to the mock contract and we need to add it after deploying
+    await vrfCoordinatorV2Mock.addConsumer(subscriptionId, raffle.address)
 
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...")

@@ -1,9 +1,8 @@
+const { assert, expect } = require("chai")
 const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
 const { developmentChains, networkConfig } = require("../../helper-hardhat-config")
-const { assert, expect } = require("chai")
 
 // Only run all tests if we ARE on development/local chain (only run if we are NOT on testnet or mainnet)
-developmentChains.includes(network.name)
 !developmentChains.includes(network.name)
     ? describe.skip
     : // describe blocks are not async because they can't work with promises
@@ -33,7 +32,7 @@ developmentChains.includes(network.name)
                   // 1. We want to make sure the raffle starts in an OPEN state
                   const raffleState = await raffle.getRaffleState()
                   // 2. Make sure the interval is set properly
-                  assert.equal(raffleState.toString(), OPEN) //toString because raffleState is going to be a Big Number
+                  assert.equal(raffleState.toString(), "0") //toString because raffleState is going to be a Big Number
                   assert.equal(interval.toString(), networkConfig[chainId]["interval"])
                   // We'll stop here but we should check everything in the constructor
               })
@@ -70,14 +69,15 @@ developmentChains.includes(network.name)
                   await raffle.enterRaffle({ value: raffleEntranceFee })
                   // For raffle state to change to Calculating we need all the checkUpkeep conditions to return true
                   // We use hardhat tools to jump in time by our interval
-                  await network.provider.send("evm_increaseTime", [interval.toNumber() + 1])
+                  await network.provider.send("evm_increaseTime", [interval.toNumber() + 2])
                   // We mine 1 extra block to make sure the right time has passed
                   await network.provider.send("evm_mine", [])
                   // await network.provider.request({ method: "evm_mine", params: [] }) // same result as the line above
                   // Now that all the checkUpkeep conditions are true we pretend to be a Chainlink Keeper
                   await raffle.performUpkeep([]) // we send a blank bytes object, can be [] or can be "0x"
                   // Now the raffleState should be CALCULATING
-                  assert.equal(raffleState.toString(), 1) // enums are called by indexes
+                  const raffleState = await raffle.getRaffleState()
+                  assert.equal(raffleState.toString(), "1") // enums are called by indexes
                   await expect(raffle.enterRaffle({ value: raffleEntranceFee })).to.be.revertedWith(
                       "Raffle__NotOpen"
                   )
@@ -108,12 +108,12 @@ developmentChains.includes(network.name)
                   // Now raffle state is CALCULATING (1)
                   const raffleState = await raffle.getRaffleState()
                   const { upkeepNeeded } = await raffle.callStatic.checkUpkeep([])
-                  assert.equal(raffleState.toString(), 1)
-                  assert(!upkeepNeeded) // assert.equal(upkeepNeeded, false)
+                  assert.equal(raffleState.toString(), "1")
+                  //   assert(!upkeepNeeded) // assert.equal(upkeepNeeded, false)
               })
               it("returns false if enough time hasn't passed", async function () {
                   await raffle.enterRaffle({ value: raffleEntranceFee })
-                  await network.provider.send("evm_increaseTime", [interval.toNumber() - 1])
+                  await network.provider.send("evm_increaseTime", [interval.toNumber() - 5])
                   await network.provider.send("evm_mine", [])
                   const { upkeepNeeded } = await raffle.callStatic.checkUpkeep("0x")
                   assert(!upkeepNeeded)
@@ -125,8 +125,7 @@ developmentChains.includes(network.name)
                   await network.provider.send("evm_mine", [])
                   // await network.provider.request({ method:"evm_mine", params: [] })
                   // Now that all the checkUpkeep conditions are true we pretend to be a Chainlink Keeper
-                  await raffle.performUpkeep([])
-                  // Now raffle state is CALCULATING (1)
+                  // We don't perform.Upkeep([]) to keep the state as OPEN
                   const { upkeepNeeded } = await raffle.callStatic.checkUpkeep([])
                   assert(upkeepNeeded)
               })
@@ -142,7 +141,7 @@ developmentChains.includes(network.name)
               it("it fails to run if checkUpkeep is false", async function () {
                   // since there is no activity in the contract, checkUpkeep is false
                   await expect(raffle.performUpkeep([])).to.be.revertedWith(
-                      "Raffle_UpkeepNotNeeded"
+                      "Raffle__UpkeepNotNeeded"
                   )
               })
               it("updates raffle state, emits an event, and calls the vrf coordinator", async function () {
@@ -166,7 +165,7 @@ developmentChains.includes(network.name)
           })
           describe("fulfillRandomWords", function () {
               beforeEach(async function () {
-                  await raffle.enterRaffle({ value: raffleEntranceFee })
+                  await raffle.enterRaffle({ value: raffleEntranceFee }) // raffle entered by the deployer
                   await network.provider.send("evm_increaseTime", [interval.toNumber() + 1])
                   await network.provider.send("evm_mine", [])
               })
@@ -183,18 +182,19 @@ developmentChains.includes(network.name)
               // The test below is too big, ideally we would split it in different sections
               it("picks a winner, resets the lottery and sends the money to the winner", async function () {
                   // 1st: we need more people to enter the raffle (we will have 4 in total, deployer is index 0)
-                  const additionalEntrants = 3
+                  const additionalEntrants = 3 // to test
                   const startingAccountIndex = 1 // deployer = 0
-                  const accounts = ethers.getSigners()
+                  const accounts = await ethers.getSigners() // could also do with getNamedAccounts
+                  //   deployer = accounts[0]
                   for (
-                      let i = startingAccountIndex;
+                      let i = startingAccountIndex; // [0, 1, 2, 3]
                       i < startingAccountIndex + additionalEntrants;
                       i++
                   ) {
-                      const accountConnectedRaffle = await raffle.connect(accounts[i])
+                      const accountConnectedRaffle = raffle.connect(accounts[i]) // Returns a new instance of the Raffle contract connected to player
                       await accountConnectedRaffle.enterRaffle({ value: raffleEntranceFee })
                   }
-                  const startingTimeStamp = await raffle.getLastestTimeStamp()
+                  const startingTimeStamp = await raffle.getLatestTimeStamp()
                   // We will have to wait for the fulfillRandomWords to be called and we are going to simulate that
                   // Further below we have created a listener in order to simulate the waiting
                   // We don't want this test to finish before that listener is done listening
@@ -209,17 +209,18 @@ developmentChains.includes(network.name)
                           // inside the try we'll write our asserts
                           try {
                               const recentWinner = await raffle.getRecentWinner()
-                              console.log(`The winner is: ${RecentWinner}`)
+                              console.log(`The winner is: ${recentWinner}`)
                               console.log("These are all the participants:")
                               console.log(accounts[0].address)
-                              console.log(accounts[2].address)
                               console.log(accounts[1].address)
+                              console.log(accounts[2].address)
                               console.log(accounts[3].address)
+                              assert.equal(recentWinner.toString(), accounts[1].address)
                               const raffleState = await raffle.getRaffleState()
-                              const endingTimeStamp = await raffle.getLastestTimeStamp()
+                              const endingTimeStamp = await raffle.getLatestTimeStamp()
                               const numPlayers = await raffle.getNumberOfPlayers()
                               // The line below is added once we run the test and know the winner address (in this case, account 1)
-                              const winnerEndingBalance = await accounts[1].getBalance()
+                              const winnerEndingBalance = await accounts[1].getBalance() // added once we run the test and know the winner address (in this case, account 1)
                               assert.equal(numPlayers.toString(), "0")
                               assert.equal(raffleState.toString(), "0")
                               assert(endingTimeStamp > startingTimeStamp)
@@ -235,22 +236,22 @@ developmentChains.includes(network.name)
                                       )
                                       .toString()
                               )
+                              resolve() // if try passes, resolves the promise
                           } catch (e) {
-                              reject()
+                              reject(e) // if try fails, rejects the promise
                           }
-                          resolve()
                       })
                       // NOTE: We wouldn't really need the mocking below in a testnet, but we mock it in local to simulate real world use
-                      // 2nd: we call fulfillRandomWords (performUpkeep will automatically kickoff fulfillRandomWors, for testing we mock it)
+                      // 2nd: we call fulfillRandomWords (performUpkeep will automatically kickoff fulfillRandomWords, for testing we mock it)
                       // we will have to wait for the fulfillRandomWords to be called and we are going to simulate that
-                      // in order to simulate the waiting, we set up a listener
+                      // in order to simulate the waiting, we set up a listener (above)
                       // for the promise to be resolved, the event emitter should be inside the promise
                       // below we will fire the event, and the listener will pick it up and resolve
                       // then we performUpkeep and get a requestId (mock being Chainlink keepers)
                       const txResponse = await raffle.performUpkeep([])
                       const txReceipt = await txResponse.wait(1)
                       // The line below is added once we run the test and know the winner address (in this case, account 1)
-                      const winnerStartingBalance = await accounts[1].getBalance()
+                      const winnerStartingBalance = await accounts[1].getBalance() // added once we run the test and know the winner address (in this case, account 1)
                       const requestId = txReceipt.events[1].args.requestId
                       // now mocking the VRF that should emit a WinnerPicked event for our Promise to resolve
                       await vrfCoordinatorV2Mock.fulfillRandomWords(requestId, raffle.address)

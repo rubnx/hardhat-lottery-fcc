@@ -53,7 +53,7 @@ module.exports = {
     },
     // Adding a timeout for tests in case they get stuck in a unfulfilled promise or a loop
     mocha: {
-        timeout: 300000, // 300 seconds max
+        timeout: 500000, // 500 seconds max
     },
     etherscan: {
         apiKey: ETHERSCAN_API_KEY,

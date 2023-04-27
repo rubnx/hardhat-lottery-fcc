@@ -1,9 +1,9 @@
 // To be able to run these tests we need:
 // 1. Get our SubId for Chainlink VRF
 // 2. Deploy our contract using the SubId
-// 3. Register the contract with Chainlink VRF & it's subId
-// 4. Register the contract with Chainlink Keepers
-// 5. Run Staging tests
+// 3. Register the contract with Chainlink VRF & its subId // https://vrf.chain.link/ add the deployed contract address as a consumer
+// 4. Register the contract with Chainlink Keepers // https://automation.chain.link/ register new Upkeep
+// 5. Run Staging tests (this test)
 
 const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
 const { developmentChains, networkConfig } = require("../../helper-hardhat-config")
@@ -27,8 +27,8 @@ developmentChains.includes(network.name)
 
           describe("fulfillRandomWords", function () {
               it("works with live Chainlink Keepers and Chainlink VRF, we get a random winner", async function () {
-                  // enter the raffle
-                  const startingTimeStamp = await raffle.getLatestTimestamp()
+                  // enter the raffle but 1st setup a listener to listen for event emitted
+                  const startingTimeStamp = await raffle.getLatestTimeStamp()
                   const accounts = await ethers.getSigners() // accounts[0] will be our deployer
 
                   // setup listener before we enter the raffle
@@ -41,25 +41,28 @@ developmentChains.includes(network.name)
                               const recentWinner = await raffle.getRecentWinner()
                               const raffleState = await raffle.getRaffleState()
                               const winnerEndingBalance = await accounts[0].getBalance() // winner is the deployer because only 1 entered the raffle
-                              const endingTimeStamp = await raffle.getLatestTimestamp()
+                              const endingTimeStamp = await raffle.getLatestTimeStamp()
 
                               await expect(raffle.getPlayer(0)).to.be.reverted // check if players[] is reset
                               assert.equal(recentWinner.toString(), accounts[0].address)
                               assert.equal(raffleState, 0)
                               assert.equal(
-                                  winnerEndingBalance.toString,
-                                  winnerStartingBalance.add(getEntranceFee).toString()
+                                  winnerEndingBalance.toString(),
+                                  winnerStartingBalance.add(raffleEntranceFee).toString()
                               )
                               assert(endingTimeStamp > startingTimeStamp)
                               resolve()
-                          } catch (e) {
+                          } catch (error) {
                               console.log(error)
-                              reject(e)
+                              reject(error)
                           }
                       })
                       // Then entering the raffle
+                      console.log("Entering Raffle...")
                       // This time we do it inside the promise so that the WinnerPicked event gets emitted inside
-                      await raffle.enterRaffle({ value: raffleEntranceFee })
+                      const tx = await raffle.enterRaffle({ value: raffleEntranceFee })
+                      await tx.wait(1) // wait for 1 block
+                      console.log("Ok, time to wait...")
                       const winnerStartingBalance = await accounts[0].getBalance() // winner is the deployer because only 1 entered the raffle
 
                       // And this code WON'T complete until our listener has finished listening!
