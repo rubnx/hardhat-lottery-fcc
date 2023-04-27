@@ -1,10 +1,40 @@
-# Basic Dependencies Hardhat project - FreeCodeCamp
+# Raffle Project
+This project allows a number of participant pay ETH to participate in a raffle pool.
+The whole process will be automated using Chainlink Automations https://automation.chain.link/
+After deploying the raffle status will be set as OPEN.
+
+Each player will connect their wallet and pay our deployed contract an entrance Fee to participate.
+The raffle will end when all these conditions are met:
+1. A specific amount of time has passed since the raffle opened (we will keep track of that with Chainlink Automations (Keepers))
+2. There is at least 1 participant in the pool
+3. There is more than 0 ETH in the contract
+
+When the raffle ends:
+1. The contract state will change to CALCULATING (non participants will be allowed while calculating).
+2. A random winner will be chosen from the pool (We will use Verified Randomnes with Chainlink VRF)
+3. The whole amount in the pool will be sent to the winner.
+4. The contract state will be set to OPEN.
+5. The time will be reset.
+6. The Raffle will start again.
+
+<br>
+
+---
+<br>
+
+## Basic Dependencies Hardhat project - FreeCodeCamp:
 
 <br>
 
 ```
 yarn add --dev @nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers ethers @nomiclabs/hardhat-etherscan @nomiclabs/hardhat-waffle chai ethereum-waffle hardhat hardhat-contract-sizer hardhat-deploy hardhat-gas-reporter prettier prettier-plugin-solidity solhint solidity-coverage dotenv
 ```
+
+<br>
+
+---
+
+<br>
 
 ## Includes:
 
@@ -30,7 +60,7 @@ yarn add --dev @nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers ethers @nomic
 
 <br>
 
-## About testing plugins
+## About testing plugins:
 
 1. **Hardhat-waffle** provides the infrastructure for running tests in a simulated environment, while **Chai** provides the syntax for making assertions about the behavior of the contracts.
 2. **Hardhat-waffle** also provides a set of **Chai** plugins that extend the functionality of **Chai**, such as a plugin for asserting that an event was emitted by a contract or a plugin for interacting with contract interfaces.
